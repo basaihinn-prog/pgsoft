@@ -1,8 +1,15 @@
 <?php
-	error_reporting(0);
+	error_reporting(1);
     ini_set('display_errors', 1);
 	session_start();
-	if ($_COOKIE['auth'] == "admin_in"){header("location:"."painel.php");}
+	if (!empty($_COOKIE['auth']) && $_COOKIE['auth'] == "admin_in"){
+		header("Location: /painel.php");
+		exit;
+	}
+	if (!empty($_SESSION['auth']) && $_SESSION['auth'] == "admin_in"){
+		header("Location: /painel.php");
+		exit;
+	}
 ?>
 
 <!DOCTYPE html>
@@ -64,6 +71,13 @@
                         <!-- /Logo -->
                         <h4 class="mb-2">Bem-vindo a betbrasil! 👋</h4>
                         <p class="mb-4">Faça login na sua conta e comece a aventurar</p>
+
+                        <?php if (!empty($_SESSION['login_error'])): ?>
+                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                <?php echo htmlspecialchars($_SESSION['login_error']); unset($_SESSION['login_error']); ?>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        <?php endif; ?>
 
                         <form id="formAuthentication" class="mb-3" method="POST" action="login.php">
                             <div class="mb-3">
