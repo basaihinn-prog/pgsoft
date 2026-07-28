@@ -1,20 +1,29 @@
 <?php
 session_start();
 error_reporting(1);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
 
-// Check if user is authenticated
-if (empty($_COOKIE['auth']) && empty($_SESSION['auth'])) {
+// Check if user is authenticated via cookie or session
+$isAuthenticated = false;
+
+if (!empty($_COOKIE['auth']) && $_COOKIE['auth'] == 'admin_in') {
+    $isAuthenticated = true;
+    // Sync cookie data to session
+    if (empty($_SESSION['auth'])) {
+        $_SESSION['auth'] = 'admin_in';
+        $_SESSION['admin_id'] = $_COOKIE['admin_id'] ?? '1';
+        $_SESSION['agentcode'] = $_COOKIE['agentcode'] ?? 'Agent';
+    }
+} elseif (!empty($_SESSION['auth']) && $_SESSION['auth'] == 'admin_in') {
+    $isAuthenticated = true;
+}
+
+if (!$isAuthenticated) {
     header('Location: /index.php');
     exit;
 }
 
-// Set session from cookie if not already set
-if (empty($_SESSION['auth']) && $_COOKIE['auth'] == 'admin_in') {
-    $_SESSION['auth'] = 'admin_in';
-    $_SESSION['admin_id'] = $_COOKIE['admin_id'] ?? '';
-    $_SESSION['agentcode'] = $_COOKIE['agentcode'] ?? '';
-}
+$agentCode = $_SESSION['agentcode'] ?? $_COOKIE['agentcode'] ?? 'Agent';
 ?>
 
 <!doctype html>
@@ -42,9 +51,10 @@ if (empty($_SESSION['auth']) && $_COOKIE['auth'] == 'admin_in') {
                             <div class="col-lg-8 mb-4">
                                 <div class="card">
                                     <div class="card-body">
-                                        <h5 class="card-title">Bem-vindo ao Painel!</h5>
-                                        <p class="card-text">Olá, <strong><?php echo htmlspecialchars($_SESSION['agentcode'] ?? 'Agent'); ?></strong></p>
+                                        <h5 class="card-title">Bem-vindo ao Painel Administrativo!</h5>
+                                        <p class="card-text">Olá, <strong><?php echo htmlspecialchars($agentCode); ?></strong></p>
                                         <p class="card-text">Use o menu lateral para navegar entre as opções do sistema.</p>
+                                        <p class="card-text text-muted">Sistema PGSoft - Gerenciador de Jogos</p>
                                     </div>
                                 </div>
                             </div>
@@ -54,10 +64,31 @@ if (empty($_SESSION['auth']) && $_COOKIE['auth'] == 'admin_in') {
                                     <div class="card-body">
                                         <h5 class="card-title">Informações da Sessão</h5>
                                         <ul class="list-unstyled">
-                                            <li><strong>ID:</strong> <?php echo htmlspecialchars($_SESSION['admin_id'] ?? 'N/A'); ?></li>
-                                            <li><strong>Agent Code:</strong> <?php echo htmlspecialchars($_SESSION['agentcode'] ?? 'N/A'); ?></li>
+                                            <li><strong>Agent Code:</strong> <?php echo htmlspecialchars($agentCode); ?></li>
                                             <li><strong>Status:</strong> <span class="badge bg-success">Online</span></li>
+                                            <li><strong>Sessão Ativa:</strong> <span class="badge bg-info">Sim</span></li>
                                         </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-md-12">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="card-title">Ações Rápidas</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <a href="/jogos.php" class="btn btn-primary">
+                                            <i class="bx bx-game"></i> Jogos
+                                        </a>
+                                        <a href="/agents.php" class="btn btn-info">
+                                            <i class="bx bx-user"></i> Agentes
+                                        </a>
+                                        <a href="/logout.php" class="btn btn-danger">
+                                            <i class="bx bx-log-out"></i> Sair
+                                        </a>
                                     </div>
                                 </div>
                             </div>
