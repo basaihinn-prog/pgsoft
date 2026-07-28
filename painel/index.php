@@ -1,8 +1,15 @@
 <?php
-	error_reporting(0);
+	error_reporting(1);
     ini_set('display_errors', 1);
 	session_start();
-	if ($_COOKIE['auth'] == "admin_in"){header("location:"."painel.php");}
+	if (!empty($_COOKIE['auth']) && $_COOKIE['auth'] == "admin_in"){
+		header("Location: /painel.php");
+		exit;
+	}
+	if (!empty($_SESSION['auth']) && $_SESSION['auth'] == "admin_in"){
+		header("Location: /painel.php");
+		exit;
+	}
 ?>
 
 <!DOCTYPE html>
