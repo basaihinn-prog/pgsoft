@@ -65,6 +65,13 @@
                         <h4 class="mb-2">Bem-vindo a betbrasil! 👋</h4>
                         <p class="mb-4">Faça login na sua conta e comece a aventurar</p>
 
+                        <?php if (!empty($_SESSION['login_error'])): ?>
+                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                <?php echo htmlspecialchars($_SESSION['login_error']); unset($_SESSION['login_error']); ?>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        <?php endif; ?>
+
                         <form id="formAuthentication" class="mb-3" method="POST" action="login.php">
                             <div class="mb-3">
                                 <label for="agentCode" class="form-label">Agent Code</label>
