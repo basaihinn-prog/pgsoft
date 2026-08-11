@@ -1,48 +1,61 @@
 <?php
-include("includes/connect.php");
+require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/includes/connect.php';
 
-$cat = $_POST['cat'];
-$act = $_POST['act'];
-$id = $_POST['id'];
+header('Content-Type: application/json; charset=utf-8');
 
-if ($cat == "users") {
-    $username = addslashes(htmlentities($_POST["username"], ENT_QUOTES));
-    $token = addslashes(htmlentities($_POST["token"], ENT_QUOTES));
-    $atk = addslashes(htmlentities($_POST["atk"], ENT_QUOTES));
-    $saldo = addslashes(htmlentities($_POST["saldo"], ENT_QUOTES));
-    $valorapostado = addslashes(htmlentities($_POST["valorapostado"], ENT_QUOTES));
-    $valordebitado = addslashes(htmlentities($_POST["valordebitado"], ENT_QUOTES));
-    $valorganho = addslashes(htmlentities($_POST["valorganho"], ENT_QUOTES));
-    $rtp = addslashes(htmlentities($_POST["rtp"], ENT_QUOTES));
-    $isinfluencer = addslashes(htmlentities($_POST["isinfluencer"], ENT_QUOTES));
-    $agentid = addslashes(htmlentities($_POST["agentid"], ENT_QUOTES));
-    $isinfluencer = filter_var($isinfluencer, FILTER_VALIDATE_BOOLEAN) ? 'true' : 'false';
-    try {
-        $result = false;
-
-        if ($act == "add") {
-            $result = pg_query($conn, "INSERT INTO users (username, token, atk, saldo, valorapostado, valordebitado, valorganho, rtp, is_influencer, agentid) VALUES ('$username', '$token', '$atk', '$saldo', '$valorapostado', '$valordebitado', '$valorganho', '$rtp', '$isinfluencer', '$agentid')");
-
-            $messagem = "Dados cadastro com sucesso";
-        } elseif ($act == "edit") {
-            $result = pg_query($conn, "UPDATE users SET username = '$username', token = '$token', atk = '$atk', saldo = '$saldo', valorapostado = '$valorapostado', valordebitado = '$valordebitado', valorganho = '$valorganho', rtp = '$rtp', is_influencer = '$isinfluencer', agentid = '$agentid' WHERE id = '$id'");
-            $messagem = "Dados atualizado com sucesso";
-        } elseif ($act == "delete") {
-            $result = pg_query($conn, "DELETE FROM users WHERE id = '$id'");
-            $messagem = "Dados excluido com sucesso";
-        }
-
-        if (!$result) {
-            http_response_code(400);
-            echo json_encode(['message' => 'Ops, erro ao atualizar dados.']);
-            return;
-        }
-
-        http_response_code(200);
-        echo json_encode(['message' => $messagem, 'redirect' => './users.php']);
-    } catch (Exception $ex) {
-        http_response_code(400);
-        echo json_encode(['message' => 'Ops, erro ao atualizar dados.']);
-    }
+if ($_SERVER['REQUEST_METHOD'] !== 'POST' || ($_POST['cat'] ?? '') !== 'users') {
+    http_response_code(400);
+    echo json_encode(['message' => 'Solicitação inválida.']);
+    exit;
 }
-?>
+
+$action = $_POST['act'] ?? '';
+$id = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
+$fields = ['username', 'token', 'atk', 'saldo', 'valorapostado', 'valordebitado', 'valorganho', 'rtp', 'agentid'];
+$data = [];
+
+foreach ($fields as $field) {
+    $data[$field] = trim((string) ($_POST[$field] ?? ''));
+}
+
+$data['is_influencer'] = filter_var($_POST['isinfluencer'] ?? false, FILTER_VALIDATE_BOOLEAN);
+$data['agentid'] = (int) $data['agentid'];
+
+if ($data['username'] === '' || !$data['agentid']) {
+    http_response_code(422);
+    echo json_encode(['message' => 'Usuário e agente são obrigatórios.']);
+    exit;
+}
+
+if ($data['agentid'] !== (int) $_SESSION['admin_id']) {
+    http_response_code(403);
+    echo json_encode(['message' => 'Acesso não autorizado.']);
+    exit;
+}
+
+try {
+    if ($action === 'add') {
+        $columns = implode(', ', $fields);
+        $columns .= ', is_influencer';
+        $placeholders = implode(', ', array_map(fn ($field) => ':' . $field, $fields));
+        $statement = $conn->prepare("INSERT INTO users ($columns) VALUES ($placeholders, :is_influencer)");
+        $statement->execute($data);
+    } elseif ($action === 'edit' && $id) {
+        $assignments = implode(', ', array_map(fn ($field) => "$field = :$field", $fields));
+        $data['id'] = $id;
+        $statement = $conn->prepare("UPDATE users SET $assignments, is_influencer = :is_influencer WHERE id = :id");
+        $statement->execute($data);
+    } elseif ($action === 'delete' && $id) {
+        $statement = $conn->prepare('DELETE FROM users WHERE id = :id AND agentid = :agentid');
+        $statement->execute(['id' => $id, 'agentid' => (int) $_SESSION['admin_id']]);
+    } else {
+        throw new InvalidArgumentException('Ação inválida.');
+    }
+
+    echo json_encode(['message' => 'Dados atualizados com sucesso.', 'redirect' => './users.php']);
+} catch (Throwable $exception) {
+    error_log($exception->getMessage());
+    http_response_code(400);
+    echo json_encode(['message' => 'Não foi possível atualizar os dados.']);
+}

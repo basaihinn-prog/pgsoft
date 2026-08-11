@@ -1,4 +1,7 @@
 <!doctype html>
+<?php
+require_once __DIR__ . '/includes/auth.php';
+?>
 <html>
 
 <head>

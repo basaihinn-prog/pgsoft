@@ -1,50 +1,59 @@
 <?php
-error_reporting(0);
-ini_set('display_errors', 1);
+require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/includes/connect.php';
 
-include("includes/connect.php");
+header('Content-Type: application/json; charset=utf-8');
 
-$cat = $_POST['cat'] ?? '';
-$act = $_POST['act'] ?? '';
-$id = $_POST['id'] ?? '';
+if ($_SERVER['REQUEST_METHOD'] !== 'POST' || ($_POST['cat'] ?? '') !== 'agents') {
+    http_response_code(400);
+    echo json_encode(['message' => 'Solicitação inválida.']);
+    exit;
+}
 
-if ($cat == "agents") {
-    $agentcode = addslashes(htmlentities($_POST["agentcode"] ?? '', ENT_QUOTES));
-    $senha = addslashes(htmlentities($_POST["senha"] ?? '', ENT_QUOTES));
-    $saldo = addslashes(htmlentities($_POST["saldo"] ?? '', ENT_QUOTES));
-    $agentToken = addslashes(htmlentities($_POST["agentToken"] ?? '', ENT_QUOTES));
-    $secretKey = addslashes(htmlentities($_POST["secretKey"] ?? '', ENT_QUOTES));
-    $probganho = addslashes(htmlentities($_POST["probganho"] ?? '', ENT_QUOTES));
-    $probbonus = addslashes(htmlentities($_POST["probbonus"] ?? '', ENT_QUOTES));
-    $probganhortp = addslashes(htmlentities($_POST["probganhortp"] ?? '', ENT_QUOTES));
-    $probganhoinfluencer = addslashes(htmlentities($_POST["probganhoinfluencer"] ?? '', ENT_QUOTES));
-    $probbonusinfluencer = addslashes(htmlentities($_POST["probbonusinfluencer"] ?? '', ENT_QUOTES));
-    $probganhosaldo = addslashes(htmlentities($_POST["probganhosaldo"] ?? '', ENT_QUOTES));
-    $callbackurl = addslashes(htmlentities($_POST["callbackurl"] ?? '', ENT_QUOTES));
-    $probganhoaposta = addslashes(htmlentities($_POST["probganhoaposta"] ?? '', ENT_QUOTES));
-    $limitadorchicky = addslashes(htmlentities($_POST["limitadorchicky"] ?? '', ENT_QUOTES));
+$action = $_POST['act'] ?? '';
+$id = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
+$fields = [
+    'agentcode', 'senha', 'saldo', 'agentToken', 'secretKey', 'probganho', 'probbonus',
+    'probganhortp', 'probganhoinfluencer', 'probbonusinfluencer', 'probganhosaldo',
+    'probganhoaposta', 'callbackurl', 'limitadorchicky',
+];
+$data = [];
 
-    try {
-        $result = false;
+foreach ($fields as $field) {
+    $data[$field] = trim((string) ($_POST[$field] ?? ''));
+}
 
-        if ($act == "add") {
-            $result = pg_query($conn, "INSERT INTO agents (agentcode, senha, saldo, \"agentToken\", \"secretKey\", probganho, probbonus, probganhortp, probganhoinfluencer, probbonusinfluencer, probganhosaldo, probganhoaposta, callbackurl,limitadorchicky) VALUES ('$agentcode', '$senha', '$saldo', '$agentToken', '$secretKey', '$probganho', '$probbonus', '$probganhortp', '$probganhoinfluencer', '$probbonusinfluencer', '$probganhosaldo', '$probganhoaposta', '$callbackurl', '$limitadorchicky')");
-        } elseif ($act == "edit") {
-            $result = pg_query($conn, "UPDATE agents SET agentcode = '$agentcode', senha = '$senha', saldo = '$saldo', \"agentToken\" = '$agentToken', \"secretKey\" = '$secretKey', probganho = '$probganho', probbonus = '$probbonus', probganhortp = '$probganhortp', probganhoinfluencer = '$probganhoinfluencer', probbonusinfluencer = '$probbonusinfluencer', probganhosaldo = '$probganhosaldo', probganhoaposta = '$probganhoaposta', callbackurl = '$callbackurl' ,limitadorchicky = '$limitadorchicky' WHERE id = '$id'");
-        } elseif ($act == "delete") {
-            $result = pg_query($conn, "DELETE FROM agents WHERE id = '$id'");
-        }
+if ($data['agentcode'] === '' || $data['senha'] === '') {
+    http_response_code(422);
+    echo json_encode(['message' => 'Agent Code e senha são obrigatórios.']);
+    exit;
+}
 
-        if (!$result) {
-            http_response_code(400);
-            echo json_encode(['message' => 'Ops, erro ao atualizar dados: ' . pg_last_error($conn)]);
-            return;
-        }
-
-        http_response_code(200);
-        echo json_encode(['message' => 'Dados atualizado com sucesso', 'redirect' => './agents.php']);
-    } catch (Exception $ex) {
-        http_response_code(400);
-        echo json_encode(['message' => 'Ops, erro ao atualizar dados.']);
+try {
+    if (in_array($action, ['edit', 'delete'], true) && $id !== (int) $_SESSION['admin_id']) {
+        throw new InvalidArgumentException('Ação inválida.');
     }
+
+    if ($action === 'add') {
+        $columns = implode(', ', array_map(fn ($field) => '"' . $field . '"', $fields));
+        $placeholders = implode(', ', array_map(fn ($field) => ':' . $field, $fields));
+        $statement = $conn->prepare("INSERT INTO agents ($columns) VALUES ($placeholders)");
+        $statement->execute($data);
+    } elseif ($action === 'edit' && $id) {
+        $assignments = implode(', ', array_map(fn ($field) => '"' . $field . '" = :' . $field, $fields));
+        $data['id'] = $id;
+        $statement = $conn->prepare("UPDATE agents SET $assignments WHERE id = :id");
+        $statement->execute($data);
+    } elseif ($action === 'delete' && $id) {
+        $statement = $conn->prepare('DELETE FROM agents WHERE id = :id');
+        $statement->execute(['id' => $id]);
+    } else {
+        throw new InvalidArgumentException('Ação inválida.');
+    }
+
+    echo json_encode(['message' => 'Dados atualizados com sucesso.', 'redirect' => './agents.php']);
+} catch (Throwable $exception) {
+    error_log($exception->getMessage());
+    http_response_code(400);
+    echo json_encode(['message' => 'Não foi possível atualizar os dados.']);
 }

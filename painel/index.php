@@ -2,11 +2,11 @@
 	error_reporting(1);
     ini_set('display_errors', 1);
 	session_start();
-	if (!empty($_COOKIE['auth']) && $_COOKIE['auth'] == "admin_in"){
+	if (!empty($_SESSION['admin_id'])) {
 		header("Location: /painel.php");
 		exit;
 	}
-	if (!empty($_SESSION['auth']) && $_SESSION['auth'] == "admin_in"){
+	if (!empty($_SESSION['admin_id'])) {
 		header("Location: /painel.php");
 		exit;
 	}
