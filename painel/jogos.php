@@ -1,6 +1,7 @@
 <!doctype html>
 <?php
 require_once __DIR__ . '/includes/auth.php';
+$gamesOrigin = rtrim(getenv('GAMES_ORIGIN') ?: 'https://games.pgplay.online', '/');
 ?>
 <html>
 
@@ -129,7 +130,7 @@ require_once __DIR__ . '/includes/auth.php';
 								<div class="card game-card">
 									<div class="game-card-wrapper">
 										<img class="card-img-top" src="<?php echo $gameImage; ?>" alt="<?php echo htmlspecialchars($gameName); ?>">
-										<a href="../api/public/<?php echo $gameId; ?>/index.html" class="game-launch-btn" target="_blank">Jogar</a>
+										<a href="<?php echo htmlspecialchars($gamesOrigin . '/' . rawurlencode($gameId) . '/index.html', ENT_QUOTES, 'UTF-8'); ?>" class="game-launch-btn" target="_blank" rel="noopener">Jogar</a>
 									</div>
 									<div class="card-body">
 										<h5 class="card-title game-title"><?php echo htmlspecialchars($gameName); ?></h5>
