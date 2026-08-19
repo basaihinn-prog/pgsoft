@@ -1,0 +1,15 @@
+[Unit]
+Description=PGPlay NestJS API
+After=network.target
+
+[Service]
+Type=simple
+User=pgplay
+WorkingDirectory=/var/www/pgplay/api
+EnvironmentFile=/etc/pgplay/api.env
+ExecStart=/usr/bin/node dist/main.js
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

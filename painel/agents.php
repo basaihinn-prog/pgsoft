@@ -1,9 +1,10 @@
 <!doctype html>
-<html>
 <?php
-error_reporting(0);
-ini_set('display_errors', 1);
+require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/includes/connect.php';
+require_once __DIR__ . '/includes/data.php';
 ?>
+<html>
 
 <head>
     <meta charset="utf-8">
