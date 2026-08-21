@@ -27,7 +27,7 @@ The PHP panel reads game folders from `../api/public/`. Keep both folders under 
 
 1. Point A/AAAA DNS records for all four hostnames to the VPS.
 2. Ensure inbound ports `80` and `443` are allowed by the provider firewall and UFW. Do not expose port `3010` publicly.
-3. Provision PostgreSQL before starting the app. The repository contains a Prisma schema but no committed Prisma migrations, so import or create the intended database schema through an approved, tested database-provisioning process before going live.
+3. Provision PostgreSQL before starting the app. The repository contains a Prisma schema but no committed Prisma migrations, so import or create the intended database schema through an approved, tested database-provisioning process before going live. The setup script leaves `APPLY_PRISMA_SCHEMA=0` by default; only set it to `1` after reviewing the schema change and backup plan.
 4. Keep secrets out of Git. Do not deploy the database test utilities `painel/test-db.php`, `painel/setup-test-agent.php`, or `painel/create_test_agent.php`.
 
 ## 1. Install system packages
@@ -104,7 +104,7 @@ npm run build
 exit
 ```
 
-The project has a `yarn.lock` but no populated npm lockfile. Standardize and commit a tested lockfile before using `npm ci` for reproducible releases. Until then, use the package manager selected by the release process and validate the resulting build.
+The repository includes `api/package-lock.json`; use `npm ci` for reproducible releases. If dependencies change, regenerate and commit that lockfile together with the package manifest.
 
 ## 5. Create the systemd API service
 
@@ -152,7 +152,7 @@ Use `sudo journalctl -u pgplay-api -f` to inspect API logs.
 
 ## 6. Make environment variables available to PHP-FPM
 
-PHP-FPM does not automatically inherit variables from an SSH shell. Add the production environment file to the active pool configuration. Determine the installed pool path, such as `/etc/php/8.3/fpm/pool.d/www.conf`, and add:
+PHP-FPM does not automatically inherit variables from an SSH shell. The repository setup script writes these variables to the active pool; if deploying manually, add them to the pool configuration. Determine the installed pool path, such as `/etc/php/8.3/fpm/pool.d/www.conf`, and add:
 
 ```ini
 env[DATABASE_URL] = "postgresql://APP_USER:APP_PASSWORD@DB_HOST:5432/DB_NAME?schema=pgplay&sslmode=require"
@@ -209,7 +209,7 @@ Confirm Nginx can only reach the API locally. The systemd service listens on `30
 
 ## 8. Enable HTTPS
 
-Request certificates after all DNS records resolve to the VPS:
+The automated setup requires `TLS_EMAIL` and enables HTTPS by default. If configuring manually, request certificates after all DNS records resolve to the VPS:
 
 ```bash
 sudo certbot --nginx \
