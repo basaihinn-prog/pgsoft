@@ -2,6 +2,30 @@
 
 This guide deploys the project on an Ubuntu 22.04 or 24.04 VPS using Nginx, PHP-FPM, Node.js 20, PostgreSQL, and systemd.
 
+## Automated deployment
+
+Run the deployment script from the project checkout. It installs the required packages, copies the API and panel, configures PHP-FPM and Nginx, builds the API, starts systemd, and requests TLS certificates:
+
+```bash
+cd /path/to/pgsoft
+export DATABASE_URL='postgresql://APP_USER:APP_PASSWORD@127.0.0.1:5432/DB_NAME?schema=pgplay&sslmode=require'
+export DATABASE_ADMIN_URL='postgresql://ADMIN_USER:ADMIN_PASSWORD@127.0.0.1:5432/DB_NAME?sslmode=require'
+export TLS_EMAIL='ops@example.com'
+sudo --preserve-env=DATABASE_URL,DATABASE_ADMIN_URL,TLS_EMAIL \\
+  bash deploy/production-setup.sh
+```
+
+The script uses `APP_ROOT=/var/www/pgplay`, `API_PORT=3010`, and `ENABLE_TLS=1` by default. Set `APPLY_PRISMA_SCHEMA=1` only after reviewing the database change and backup plan. The script intentionally excludes the legacy `painel/adm/` directory and database test utilities.
+
+After it completes, verify the running services:
+
+```bash
+sudo systemctl is-active pgplay-api nginx
+curl -fsS https://api.pgplay.online/health
+curl -I https://panel.pgplay.online/
+curl -I https://games.pgplay.online/125/index.html
+```
+
 ## Application layout
 
 The project has three production services:
@@ -98,7 +122,7 @@ Run dependency installation and the build as the deployment user:
 ```bash
 sudo -u pgplay -H bash
 cd /var/www/pgplay/api
-npm install
+npm ci
 npx prisma generate
 npm run build
 exit
@@ -264,7 +288,7 @@ For each release:
 
 1. Back up the PostgreSQL database and `/etc/pgplay/production.env` securely before changing code or schema.
 2. Update the repository in `/var/www/pgplay` using the approved release process.
-3. Run `npm install`, `npx prisma generate`, and `npm run build` in `api/` as `pgplay`.
+3. Run `npm ci`, `npx prisma generate`, and `npm run build` in `api/` as `pgplay`.
 4. Run the tested database migration or schema update, if the release includes one.
 5. Restart the API with `sudo systemctl restart pgplay-api`.
 6. Run the post-deployment checks above.
